@@ -13,7 +13,7 @@ A bilingual (English/Chinese) medical research assistant that helps you search a
 ## Requirements
 
 - Python 3.11 or higher
-- Google Cloud Project with Gemini API enabled
+- Google Cloud Project with Gemini API enabled(only 90 days free for the model "textembedding-gecko@001")
 - PubMed API access (email required, API key recommended)
 
 ## Setup
