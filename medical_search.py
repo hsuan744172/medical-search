@@ -7,6 +7,9 @@ import asyncio
 import aiohttp
 import os
 from dotenv import load_dotenv
+from Bio import Entrez
+import xml.etree.ElementTree as ET
+import json
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +23,145 @@ if not OPENAI_API_KEY:
     logging.error("OPENAI_API_KEY not found in environment variables")
     raise ValueError("OPENAI_API_KEY not found in environment variables")
 
+# Add PubMed configuration
+Entrez.email = os.getenv("ENTREZ_EMAIL", "your-email@example.com")
+Entrez.api_key = os.getenv("ENTREZ_API_KEY")  # Optional but recommended
+
+class PubMedAPI:
+    @staticmethod
+    async def search_papers(query: str, limit: int = 10) -> list:
+        """Search papers using PubMed E-utilities"""
+        try:
+            # Use asyncio to run sync Entrez functions
+            loop = asyncio.get_event_loop()
+            
+            # Search for paper IDs
+            search_results = await loop.run_in_executor(
+                None,
+                lambda: Entrez.read(Entrez.esearch(
+                    db="pubmed",
+                    term=query,
+                    retmax=limit,
+                    sort="relevance"
+                ))
+            )
+            
+            if not search_results["IdList"]:
+                return []
+            
+            # Fetch paper details
+            papers_xml = await loop.run_in_executor(
+                None,
+                lambda: Entrez.efetch(
+                    db="pubmed",
+                    id=search_results["IdList"],
+                    rettype="xml"
+                ).read()
+            )
+            
+            # Parse XML response
+            root = ET.fromstring(papers_xml)
+            papers = []
+            
+            for article in root.findall(".//PubmedArticle"):
+                try:
+                    # Extract paper details
+                    pmid = article.find(".//PMID").text
+                    title = article.find(".//ArticleTitle").text or "No title"
+                    abstract = article.find(".//Abstract/AbstractText")
+                    abstract = abstract.text if abstract is not None else ""
+                    
+                    # Extract authors
+                    authors = []
+                    author_list = article.findall(".//Author")
+                    for author in author_list:
+                        lastname = author.find("LastName")
+                        firstname = author.find("ForeName")
+                        if lastname is not None and firstname is not None:
+                            authors.append(f"{firstname.text} {lastname.text}")
+                    
+                    # Extract year
+                    year_elem = article.find(".//PubDate/Year")
+                    year = year_elem.text if year_elem is not None else "N/A"
+                    
+                    # Extract journal info
+                    journal = article.find(".//Journal/Title")
+                    venue = journal.text if journal is not None else "N/A"
+                    
+                    papers.append({
+                        "paperId": pmid,
+                        "title": title,
+                        "abstract": abstract,
+                        "authors": authors,
+                        "year": year,
+                        "venue": venue
+                    })
+                    
+                except Exception as e:
+                    logging.error(f"Error parsing paper: {str(e)}")
+                    continue
+            
+            return papers
+            
+        except Exception as e:
+            logging.error(f"Error searching PubMed: {str(e)}")
+            return []
+
+    @staticmethod
+    async def fetch_paper_data(paper_id: str) -> Dict:
+        """Fetch paper data from PubMed using E-utilities"""
+        try:
+            loop = asyncio.get_event_loop()
+            
+            # Fetch paper details
+            paper_xml = await loop.run_in_executor(
+                None,
+                lambda: Entrez.efetch(
+                    db="pubmed",
+                    id=paper_id,
+                    rettype="xml"
+                ).read()
+            )
+            
+            # Parse XML
+            root = ET.fromstring(paper_xml)
+            article = root.find(".//PubmedArticle")
+            
+            if article is None:
+                raise Exception(f"Paper {paper_id} not found")
+            
+            # Extract paper details
+            title = article.find(".//ArticleTitle").text or "No title"
+            abstract = article.find(".//Abstract/AbstractText")
+            abstract = abstract.text if abstract is not None else ""
+            
+            # Extract authors
+            authors = []
+            author_list = article.findall(".//Author")
+            for author in author_list:
+                lastname = author.find("LastName")
+                firstname = author.find("ForeName")
+                if lastname is not None and firstname is not None:
+                    authors.append(f"{firstname.text} {lastname.text}")
+            
+            # Extract year and venue
+            year_elem = article.find(".//PubDate/Year")
+            year = year_elem.text if year_elem is not None else "N/A"
+            journal = article.find(".//Journal/Title")
+            venue = journal.text if journal is not None else "N/A"
+            
+            return {
+                'title': title,
+                'abstract': abstract,
+                'authors': authors,
+                'year': year,
+                'venue': venue
+            }
+            
+        except Exception as e:
+            logging.error(f"Error fetching paper data: {str(e)}")
+            raise
+
 class ScholarRAG:
     def __init__(self):
         self.embeddings = self._init_embeddings()
@@ -30,6 +172,7 @@ class ScholarRAG:
         self.api_url = "https://api.semanticscholar.org/v1/paper"
         self.search_api_url = "https://api.semanticscholar.org/graph/v1/paper/search"
         self.persist_directory = "chroma_db"  # Add persist directory for Chroma
+        self.pubmed_api = PubMedAPI()
         
     def _init_embeddings(self):
         """Initialize OpenAI embedding model"""
@@ -45,26 +188,8 @@ class ScholarRAG:
         )
 
     async def fetch_paper_data(self, paper_id: str) -> Dict:
-        """Fetch paper data asynchronously"""
-        headers = {"User-Agent": "Mozilla/5.0"}
-        url = f"{self.api_url}/{paper_id}"
-        async with aiohttp.ClientSession() as session:
-            try:
-                async with session.get(url, headers=headers) as response:
-                    if response.status != 200:
-                        raise Exception(f"Failed to fetch paper {paper_id}, status code {response.status}")
-                    data = await response.json()
-                    return {
-                        'title': data.get('title', ''),
-                        'abstract': data.get('abstract', ''),
-                        'authors': [author.get('name') for author in data.get('authors', [])],
-                        'year': data.get('year'),
-                        'venue': data.get('venue'),
-                        'citations': data.get('citations', [])
-                    }
-            except Exception as e:
-                logging.error(f"Error fetching paper data: {str(e)}")
-                raise
+        """Fetch paper data using PubMed API"""
+        return await self.pubmed_api.fetch_paper_data(paper_id)
 
     def _create_vector_store(self, paper_data: Dict):
         """Create vector store from paper data"""
@@ -128,44 +253,10 @@ class ScholarRAG:
             logging.error(f"Error in ask_question: {str(e)}")
             return {"error": f"Sorry, something went wrong. Error: {str(e)}"}
 
+# Replace the existing search_papers function
 async def search_papers(query: str, limit: int = 10) -> list:
-    """Search for papers using Semantic Scholar API"""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-    }
-    
-    params = {
-        "query": query,
-        "limit": limit,
-        "fields": "title,abstract,authors,year,venue,paperId"
-    }
-    
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                "https://api.semanticscholar.org/graph/v1/paper/search",
-                params=params,
-                headers=headers
-            ) as response:
-                if response.status != 200:
-                    raise Exception("Failed to search papers")
-                    
-                data = await response.json()
-                papers = data.get("data", [])
-                
-                # Format the results
-                return [{
-                    "title": paper.get("title", ""),
-                    "abstract": paper.get("abstract", ""),
-                    "authors": [author.get("name", "") for author in paper.get("authors", [])],
-                    "year": paper.get("year"),
-                    "venue": paper.get("venue", ""),
-                    "paperId": paper.get("paperId", "")
-                } for paper in papers]
-                
-    except Exception as e:
-        print(f"Error searching papers: {str(e)}")
-        return []
+    """Search papers using PubMed API"""
+    return await PubMedAPI.search_papers(query, limit)
 
 # Initialize system
 rag_system = ScholarRAG()

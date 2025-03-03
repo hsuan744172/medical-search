@@ -5,6 +5,7 @@ langchain==0.1.0
 langchain-community==0.0.13
 langchain-core==0.1.13
 chromadb>=0.4.22
+biopython==1.83  # Add for PubMed XML parsing
 
 # Web and data processing
 streamlit==1.41.0

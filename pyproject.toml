@@ -19,6 +19,7 @@ beautifulsoup4 = "^4.12.3"
 aiohttp = "^3.11.11"
 watchdog = "^6.0.0"
 python-dotenv = "^1.0.1"
+biopython = "^1.85"
 
 
 
