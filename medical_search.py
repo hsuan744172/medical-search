@@ -1,6 +1,8 @@
 import google.generativeai as genai
 from google.cloud import aiplatform
 from vertexai.language_models import TextEmbeddingModel
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import VertexAIEmbeddings
 from typing import Dict, Any
 from langchain_core.prompts import PromptTemplate
 import logging
@@ -52,11 +54,16 @@ class ScholarRAG:
         Year: {paper_data['year']}
         Venue: {paper_data['venue']}
         """
-        embeddings = self._get_embeddings([text])
-        # Note: You might need to modify FAISS initialization to work with Vertex AI embeddings
-        self.vector_store = FAISS.from_embeddings(
-            text_embeddings=list(zip([text], embeddings)),
-            embedding=self.embedding_model
+        
+        # 創建 VertexAI embeddings wrapper
+        embeddings_wrapper = VertexAIEmbeddings(
+            model_name="textembedding-gecko@001"
+        )
+        
+        # 創建 FAISS vector store
+        self.vector_store = FAISS.from_texts(
+            texts=[text],
+            embedding=embeddings_wrapper
         )
 
     async def ask_question(self, paper_id: str, question: str) -> Dict[str, Any]:
