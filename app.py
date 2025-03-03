@@ -1,6 +1,6 @@
 import streamlit as st
 import asyncio
-from medical_search import main_query as ask_question, search_papers
+from src import ask_question, search_papers  # 更新導入路徑
 
 # 定義翻譯文本
 TRANSLATIONS = {
