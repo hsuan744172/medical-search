@@ -4,19 +4,43 @@ A bilingual (English/Chinese) medical research assistant that helps you search a
 
 ## Features
 
-- 🔍 **Paper Search**: Search medical papers through PubMed's extensive database
-- 💬 **Interactive Q&A**: Ask questions about specific papers and get AI-powered responses
-- 🌐 **Bilingual Interface**: Switch between English and Chinese interfaces
-- 📚 **Paper Details**: View paper abstracts, authors, publication year, and venue
-- 💾 **Memory Cache**: Caches responses for repeated questions to improve performance
+- 🔍 **Advanced Paper Search**: Utilize PubMed's API for comprehensive medical paper searches
+- 💬 **AI-Powered Q&A**: Get detailed answers about medical papers using Google's Gemini AI
+- 🌐 **Bilingual Support**: Seamlessly switch between English and Chinese interfaces
+- 📚 **Detailed Paper Analysis**: View comprehensive paper details including abstracts, authors, and metadata
+- 💾 **Smart Caching**: Question-answer pairs are cached for improved response times
+- 🔄 **Real-time Updates**: Dynamic interface updates with paper selection and search results
+- 📊 **Structured Data**: Well-organized paper information with clear categorization
 
-## Requirements
+## Project Structure
 
-- Python 3.11 or higher
-- Google Cloud Project with Gemini API enabled(only 90 days free for the model "textembedding-gecko@001")
-- PubMed API access (email required, API key recommended)
+```
+medical-search/
+├── src/
+│   ├── __init__.py
+│   ├── api.py
+│   ├── main.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── scholar_rag.py
+│   └── services/
+│       ├── __init__.py
+│       └── pubmed_service.py
+├── app.py
+├── medical_search.py
+├── pyproject.toml
+└── README.md
+```
 
-## Setup
+## Technical Requirements
+
+- Python 3.11+
+- Google Cloud Project with:
+  - Gemini API enabled
+  - Vertex AI TextEmbedding model access(only 90 days free for the model "textembedding-gecko@001")
+- PubMed API credentials
+
+## Environment Setup
 
 1. Clone the repository:
    ```bash
@@ -24,55 +48,77 @@ A bilingual (English/Chinese) medical research assistant that helps you search a
    cd medical-search
    ```
 
-2. Install dependencies using Poetry:
+2. Install dependencies:
    ```bash
    poetry install
    ```
 
-3. Set up your environment variables in a `.env` file:
-   ```
+3. Configure environment variables (.env):
+   ```plaintext
    GOOGLE_API_KEY=your_google_api_key
    ENTREZ_EMAIL=your_email@example.com
-   ENTREZ_API_KEY=your_pubmed_api_key  # Optional but recommended
+   ENTREZ_API_KEY=your_pubmed_api_key
    ```
 
 4. Set up Google Cloud credentials:
-   - Download your service account key JSON file
-   - Update the path in `medical_search.py`:
-     ```python
-     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/path/to/service-account.json"
-     ```
+   ```python
+   # Update in src/models/scholar_rag.py
+   os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/path/to/service-account.json"
+   ```
 
-5. Run the application:
+5. Launch the application:
    ```bash
    poetry run streamlit run app.py
    ```
 
-## Usage
+## Core Components
 
-1. The interface will open in your default web browser
-2. Use the sidebar to search for medical papers using keywords
-3. Click on a paper from the search results to select it
-4. Ask questions about the selected paper in the chat interface
-5. Toggle between English and Chinese using the language button (🌐) in the header
+- **ScholarRAG**: Core RAG (Retrieval-Augmented Generation) implementation
+- **PubMedService**: PubMed API integration service
+- **Streamlit Interface**: Bilingual user interface with real-time updates
+- **Vector Storage**: FAISS-based vector storage for efficient retrieval
+- **Embedding Model**: Google's Vertex AI TextEmbedding model
+- **LLM Integration**: Google's Gemini Pro model for question answering
 
-## Technical Stack
+## Development Dependencies
 
-- **Frontend**: Streamlit
-- **AI Model**: Google Gemini Pro
-- **Embeddings**: Vertex AI TextEmbedding
-- **Data Source**: PubMed API via Biopython
-- **Vector Store**: FAISS
-- **Dependencies Management**: Poetry
+Key dependencies managed through Poetry:
+- streamlit
+- google-cloud-aiplatform
+- google-generativeai
+- langchain & langchain-community
+- faiss-cpu
+- biopython
+- python-dotenv
+
+## Usage Guide
+
+1. **Paper Search**:
+   - Use the sidebar search function
+   - Enter keywords related to your medical research interest
+   - Click "Search" to retrieve relevant papers
+
+2. **Paper Selection**:
+   - Browse search results in the sidebar
+   - Click on a paper title to select it
+   - View detailed paper information
+
+3. **Asking Questions**:
+   - With a paper selected, use the chat interface
+   - Enter your question about the paper
+   - Receive AI-generated responses based on paper content
+
+4. **Language Toggle**:
+   - Use the 🌐 button in the header to switch languages
+   - Interface dynamically updates to selected language
 
 ## Notes
 
-- The system uses PubMed's API, which requires an email address for requests
-- Using a PubMed API key is recommended for higher rate limits
-- The chat interface retains conversation history during the session
-- Paper details are cached to improve performance
+- API rate limits apply for both PubMed and Google APIs
+- TextEmbedding model has a 90-day free trial period
+- Responses are cached for efficiency
+- Paper metadata is stored for quick reference
 
 ## License
 
 MIT License
-
