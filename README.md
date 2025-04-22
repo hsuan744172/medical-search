@@ -19,16 +19,16 @@ medical-search/
 ├── src/
 │   ├── __init__.py
 │   ├── api.py
-│   ├── main.py
 │   ├── models/
-│   │   ├── __init__.py
 │   │   └── scholar_rag.py
 │   └── services/
-│       ├── __init__.py
 │       └── pubmed_service.py
+├── test/
+│   └── test_pubmed_connection.py
 ├── app.py
-├── medical_search.py
+├── requirements.txt
 ├── pyproject.toml
+├── .env
 └── README.md
 ```
 
@@ -37,8 +37,8 @@ medical-search/
 - Python 3.11+
 - Google Cloud Project with:
   - Gemini API enabled
-  - Vertex AI TextEmbedding model access(only 90 days free for the model "textembedding-gecko@001")
-- PubMed API credentials
+  - Vertex AI TextEmbedding model access (textembedding-gecko@001)
+- PubMed API credentials (NCBI Entrez)
 
 ## Environment Setup
 
@@ -48,27 +48,34 @@ medical-search/
    cd medical-search
    ```
 
-2. Install dependencies:
+2. Set up environment:
+
+   **Option 1: Using Poetry (recommended)**
    ```bash
    poetry install
    ```
 
-3. Configure environment variables (.env):
+   **Option 2: Using pip**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Configure environment variables in .env file:
    ```plaintext
    GOOGLE_API_KEY=your_google_api_key
    ENTREZ_EMAIL=your_email@example.com
    ENTREZ_API_KEY=your_pubmed_api_key
+   GOOGLE_CLOUD_PROJECT=your_google_cloud_project_id
    ```
 
-4. Set up Google Cloud credentials:
-   ```python
-   # Update in src/models/scholar_rag.py
-   os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/path/to/service-account.json"
+4. Test the PubMed connection:
+   ```bash
+   python test/test_pubmed_connection.py
    ```
 
 5. Launch the application:
    ```bash
-   poetry run streamlit run app.py
+   streamlit run app.py
    ```
 
 ## Core Components
@@ -78,11 +85,11 @@ medical-search/
 - **Streamlit Interface**: Bilingual user interface with real-time updates
 - **Vector Storage**: FAISS-based vector storage for efficient retrieval
 - **Embedding Model**: Google's Vertex AI TextEmbedding model
-- **LLM Integration**: Google's Gemini Pro model for question answering
+- **LLM Integration**: Google's Gemini 2.0 Flash model for question answering
 
 ## Development Dependencies
 
-Key dependencies managed through Poetry:
+Key dependencies:
 - streamlit
 - google-cloud-aiplatform
 - google-generativeai
@@ -114,8 +121,8 @@ Key dependencies managed through Poetry:
 
 ## Notes
 
-- API rate limits apply for both PubMed and Google APIs
-- TextEmbedding model has a 90-day free trial period
+- API rate limits apply for both PubMed (NCBI Entrez) and Google APIs
+- Free usage quotas apply to Google's Gemini and TextEmbedding models
 - Responses are cached for efficiency
 - Paper metadata is stored for quick reference
 
